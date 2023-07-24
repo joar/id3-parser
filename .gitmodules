@@ -1,0 +1,3 @@
+[submodule "fq"]
+	path = fq
+	url = git@github.com:wader/fq.git
