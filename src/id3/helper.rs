@@ -1,5 +1,5 @@
 use crate::error::Error;
-use binrw::BinResult;
+use binrw::{BinReaderExt, BinResult};
 
 /// From the spec:
 ///
@@ -11,19 +11,20 @@ use binrw::BinResult;
 /// > excluding the header (total tag size - 10). The reason to use 28 bits (representing up to
 /// > 256MB) for size description is that we don’t want to run out of space here.
 #[binrw::parser(reader: reader)]
-pub fn parse_id3_7_byte_size(s0: u8, s1: u8, s2: u8, s3: u8) -> BinResult<u32> {
+pub fn parse_id3_4x7_bit_be_uint() -> BinResult<u32> {
     let mut sum: u32 = 0;
-    for (i, b) in [s0, s1, s2, s3].iter().enumerate() {
+    for i in 0..4 {
+        let b: u8 = reader.read_be().unwrap();
         // Only the least significant 7 bits of each byte can be used
-        if *b >= 0x80u8 {
+        if b >= 0x80u8 {
             // pls help I don't know how to do nice errors. I'm just stuffing a box of error in an
             // Any field here.
             return Err(binrw::Error::Custom {
                 pos: reader.stream_position().unwrap(),
-                err: Box::new(Error::InvalidId3Size { idx: i, value: *b }),
+                err: Box::new(Error::InvalidId3Size { idx: i, value: b }),
             });
         }
-        sum = sum << 7 | *b as u32;
+        sum = sum << 7 | b as u32;
     }
     Ok(sum)
 }

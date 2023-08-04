@@ -4,12 +4,12 @@ use modular_bitfield::bitfield;
 use modular_bitfield::prelude::*;
 
 use crate::error::Error;
-use crate::id3::helper::parse_id3_7_byte_size;
+use crate::id3::helper::parse_id3_4x7_bit_be_uint;
 
 #[bitfield]
 #[derive(BinRead, Debug, Eq, PartialEq)]
 #[br(map = Self::from_bytes)]
-pub struct Flags {
+pub struct HeaderFlags {
     is_unsynchronized: bool,
     extended_header: bool,
     experimental_indicator: bool,
@@ -33,7 +33,7 @@ pub struct Header {
     /// The first bit (bit 7) in the ‘ID3 flags’ is indicating whether or not
     /// unsynchronisation is used (see section 5 for details); a set bit indicates usage.
     #[br(big)]
-    flags: Flags,
+    flags: HeaderFlags,
     /// Size
     /// - Each byte Must be less than \x80
     ///
@@ -44,7 +44,7 @@ pub struct Header {
     /// The ID3 tag size is the size of the complete tag after unsychronisation, including padding,
     /// excluding the header (total tag size - 10). The reason to use 28 bits (representing up to
     /// 256MB) for size description is that we don’t want to run out of space here.
-    #[br(big, parse_with = parse_id3_7_byte_size)]
+    #[br(big, parse_with = parse_id3_4x7_bit_be_uint)]
     size: u32,
 }
 
@@ -52,7 +52,7 @@ pub struct Header {
 pub struct ExtendedHeader {}
 
 impl Header {
-    pub fn new(version: u8, revision: u8, flags: Flags, size: u32) -> Header {
+    pub fn new(version: u8, revision: u8, flags: HeaderFlags, size: u32) -> Header {
         Header {
             version,
             revision,
@@ -76,7 +76,7 @@ mod tests {
     use binrw::{io::Cursor, BinReaderExt};
 
     use crate::id3::header::Header;
-    use crate::id3::Flags;
+    use crate::id3::HeaderFlags;
 
     #[test]
     fn test_parse_size() {
@@ -84,7 +84,7 @@ mod tests {
         let id3: Header = reader.read_ne().unwrap();
         assert_eq!(
             id3,
-            Header::new(0x02, 0x03, Flags::from_bytes([0x01]), 0b10_00_00_00,)
+            Header::new(0x02, 0x03, HeaderFlags::from_bytes([0x01]), 0b10_00_00_00,)
         )
     }
 
@@ -94,7 +94,7 @@ mod tests {
         let id3: Header = Header::read(reader).unwrap();
         assert_eq!(
             id3,
-            Header::new(0x02, 0x03, Flags::from_bytes([0x01]), 0x1,)
+            Header::new(0x02, 0x03, HeaderFlags::from_bytes([0x01]), 0x1,)
         )
     }
 
