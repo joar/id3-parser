@@ -1,5 +1,5 @@
 use crate::error::Error;
-use binrw::{BinReaderExt, BinResult};
+use binrw::{binrw, BinReaderExt, BinResult, BinWrite, BinWriterExt};
 
 /// From the spec:
 ///
@@ -29,6 +29,63 @@ pub fn parse_id3_4x7_bit_be_uint() -> BinResult<u32> {
     Ok(sum)
 }
 
+/// Inspired by https://phoxis.org/2010/05/08/synch-safe/
+#[binrw::writer(writer, endian)]
+pub fn write_id3_4x7_bit_be_uint(size: &u32) -> BinResult<()> {
+    let mut size_remaining: u32 = *size;
+    const NUM_BYTES: usize = 4;
+    let mut bytes: [u8; NUM_BYTES] = [0, 0, 0, 0];
+
+    for (i, mut byte) in bytes.iter_mut().enumerate() {
+        dbg!(format!("{size_remaining:b}"));
+        let shift = 7 * (i);
+        let size_after_shift = (size_remaining >> (shift));
+        let u7ish = (size_after_shift & 0x7f) as u8;
+        size_remaining = size - u7ish as u32;
+        *byte = u7ish;
+        dbg!(shift, format!("{size_after_shift:b}"), u7ish);
+    }
+    dbg!(bytes);
+    bytes.write_options(writer, endian, ())?;
+    Ok(())
+}
+
 pub fn parse_utf8_string(bytes: Vec<u8>) -> anyhow::Result<String> {
     Ok(String::from_utf8(bytes)?)
+}
+
+pub fn string_to_utf8_bytes(str: &String) -> anyhow::Result<Vec<u8>> {
+    Ok(str.as_bytes().to_vec())
+}
+
+mod tests {
+    use crate::id3::helper::write_id3_4x7_bit_be_uint;
+    use binrw::{BinWrite, BinWriterExt};
+    use std::io::Cursor;
+
+    #[derive(BinWrite)]
+    #[brw(big)]
+    struct SyncSafeInt {
+        #[bw(write_with = write_id3_4x7_bit_be_uint)]
+        value: u32,
+    }
+
+    #[test]
+    fn test_write_id3_4x7_bit_be_uint() {
+        let x: u32 = 0b1010_10101010_10101010;
+        let container = SyncSafeInt { value: x };
+        let mut writer = Cursor::new(Vec::new());
+        container.write_be(&mut writer).unwrap();
+        assert_eq!(writer.into_inner(), vec![0xff])
+    }
+
+    #[test]
+    fn test_sync_safe_int_symmetric() {
+        let x: u32 = 0b1010_10101010_10101010;
+        let container = SyncSafeInt { value: x };
+        let mut writer = Cursor::new(Vec::new());
+        container.write_be(&mut writer).unwrap();
+        let mut reader = Cursor::new(writer.into_inner());
+        let decoded_container = q
+    }
 }

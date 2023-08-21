@@ -1,5 +1,5 @@
 pub use self::frame::Frame;
-pub use self::frame::FrameFlags;
+pub use self::frame::FrameStatus;
 pub use self::header::Header;
 pub use self::header::HeaderFlags;
 
