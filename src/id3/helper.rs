@@ -10,6 +10,7 @@ use binrw::{binrw, BinReaderExt, BinResult, BinWrite, BinWriterExt};
 /// > The ID3 tag size is the size of the complete tag after unsychronisation, including padding,
 /// > excluding the header (total tag size - 10). The reason to use 28 bits (representing up to
 /// > 256MB) for size description is that we don’t want to run out of space here.
+/// > -- https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.2.html#id3v2-header
 #[binrw::parser(reader: reader)]
 pub fn parse_id3_4x7_bit_be_uint() -> BinResult<u32> {
     let mut sum: u32 = 0;
